@@ -80,6 +80,82 @@ For deployment using Docker Compose, see [docs/deployment.md](docs/deployment.md
 
 Coming soon: `docling-serve-slim` images will reduce the size by skipping the model weights download.
 
+
+## GPU 가속 설정 가이드 (한국어)
+
+Docling Serve에서 GPU를 사용하여 OCR 및 문서 처리 속도를 높이려면 다음 단계를 따르세요.
+
+### 1. CUDA 지원 PyTorch 설치
+
+기본 설치 시 CPU 전용 PyTorch가 설치될 수 있습니다. GPU를 사용하려면 CUDA 버전 PyTorch를 설치해야 합니다.
+
+```bash
+# 가상환경 활성화 (Windows)
+.\venv-docling\Scripts\Activate.ps1
+
+# 기존 CPU 버전 제거 후 CUDA 버전 설치
+pip uninstall torch torchvision torchaudio -y
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+```
+
+> [!NOTE]
+> CUDA 버전에 맞게 선택하세요:
+> - CUDA 11.8: `cu118`
+> - CUDA 12.1: `cu121`
+> - CUDA 12.4: `cu124`
+> - CUDA 12.6: `cu126`
+
+### 2. CUDA 설치 확인
+
+```bash
+python -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('PyTorch version:', torch.__version__)"
+```
+
+정상 출력 예시:
+```
+CUDA available: True
+PyTorch version: 2.9.1+cu126
+```
+
+### 3. GPU 디바이스 설정
+
+환경변수를 통해 GPU 사용을 활성화합니다:
+
+```powershell
+# Windows PowerShell
+$env:DOCLING_DEVICE = "cuda"
+docling-serve run --enable-ui
+```
+
+```bash
+# Linux/macOS
+export DOCLING_DEVICE=cuda
+docling-serve run --enable-ui
+```
+
+### 4. RapidOCR GPU 사용 시 주의사항
+
+RapidOCR의 GPU 지원은 다음 조건이 필요합니다:
+
+1. **CUDA PyTorch 설치** (위 단계 완료)
+2. **torch 백엔드 사용**: RapidOCR는 기본적으로 `onnxruntime` 백엔드를 사용합니다. `torch` 백엔드 사용 시 GPU가 활성화됩니다.
+
+정상적으로 GPU가 활성화되면 로그에서 다음과 같이 표시됩니다:
+```
+[RapidOCR] device_config.py:XX: Using CUDA device
+```
+
+CPU로 폴백되는 경우:
+```
+WARNING:docling.utils.accelerator_utils:CUDA is not available in the system. Fall back to 'CPU'
+[RapidOCR] device_config.py:50: Using CPU device
+```
+
+> [!TIP]
+> GPU 메모리가 부족한 경우 (예: RTX 2060 6GB), OCR은 CPU로 두고 Layout/Table 모델만 GPU를 사용하는 것이 더 안정적일 수 있습니다.
+
+---
+
 ### Demonstration UI
 
 An easy to use UI is available at the `/ui` endpoint.
